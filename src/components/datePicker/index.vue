@@ -74,7 +74,7 @@
         border: 1px solid #00a0e2; /*no*/
     }
 
-    .pk__button--tabs {
+    .pk__button--datetime {
         height: 0.8rem;
         color: #000;
         border-radius: 0.2rem;
@@ -83,7 +83,7 @@
 
     }
 
-    .pk__button--tabs span {
+    .pk__button--datetime span {
         display: inline-block;
         height: 0.8rem;
         font-size: 0.3rem;
@@ -93,20 +93,19 @@
 
     }
 
-    .pk__button--tabs span.active {
+    .pk__button--datetime span.active {
         background: blue;
         color: #fff;
     }
 
     .pk__body-warp {
         height: 7.8rem;
-        width: 10rem;
+        width: 20rem;
         transition: transform 0.2s ease-out;
-        position: relative;
     }
 
     .pk__body-header {
-        width: 10rem;
+        width: 100%;
         height: 0.8rem;
         display: flex;
         justify-content: space-between;
@@ -114,7 +113,6 @@
         line-height: 0.8rem;
         color: blue;
         background: #ebebeb;;
-        float: left;
     }
 
     .pk__body-header div {
@@ -123,13 +121,13 @@
     }
 
     .pk__body {
-        width: 10rem;
+        width: 100%;
         height: 7rem;
         background: #ffffff;
         overflow: hidden;
+        position: relative;
         display: flex;
         justify-content: space-between;
-        float: left;
     }
 
     .pk__body-block {
@@ -163,7 +161,7 @@
     }
 
     .pk__mask--top {
-        top: 0.8rem;
+        top: 0rem;
         border-bottom: 1px solid #4c4c4c; /*no*/
         background: linear-gradient(to bottom, #FFF, rgba(255, 255, 255, 0));
     }
@@ -181,27 +179,55 @@
             <div class="pk">
                 <div class="pk__header">
                     <button @click="hidePanel()">取消</button>
-                    <div class="pk__button--tabs">
-                        <span v-for="(count,tabIndex) in tabLayout" :class="{'active':vo.tabIndex==tabIndex}"
-                              @touchstart="changeTab(tabIndex)">第{{tabIndex+1}}页</span>
+                    <div class="pk__button--datetime">
+                        <span :class="{'active':vo.tabIndex==0}" @touchstart="changeTab(0)">日期</span>
+                        <span :class="{'active':vo.tabIndex==1}" @touchstart="changeTab(1)">时间</span>
                     </div>
+
                     <button @click="submit">确定</button>
                 </div>
-                <div v-move="move" class="pk__body-warp" ref="body" :style="{transform: vo.domStyle.body}">
-                    <div class="pk__mask pk__mask--top"></div>
-                    <div class="pk__mask pk__mask--bottom"></div>
+                <div v-move="move" class="pk__body-warp" :style="{transform: vo.domStyle.body}">
+                    <div class="pk__body-header">
+                        <div>年</div>
+                        <div>月</div>
+                        <div>日</div>
 
+                        <div>时</div>
+                        <div>份</div>
+                        <div>秒</div>
 
-                    <div class="pk__body-header" v-for="(count,tabIndex) in tabLayout">
-                        <div v-if="canRender(count,tabIndex,index)" v-for="(val, key, index) in vo.data">{{key}}
-                        </div>
                     </div>
-
-                    <div class="pk__body" v-for="(count,tabIndex) in tabLayout" :tabIndex="tabIndex">
-                        <div class="pk__body-block" v-if="canRender(count,tabIndex,index)"
-                             :type="key" v-for="(items, key, index) in vo.data">
-                            <ul class="pk__item-warp" :ref="key" :style="{transform: vo.domStyle[key]}">
-                                <li class="pk__item" v-for="item in items">{{item.name}}</li>
+                    <div class="pk__body" ref="body">
+                        <div class="pk__mask pk__mask--top"></div>
+                        <div class="pk__mask pk__mask--bottom"></div>
+                        <div class="pk__body-block">
+                            <ul class="pk__item-warp" ref="year" :style="{transform: vo.domStyle.year}">
+                                <li class="pk__item" v-for="year in vo.yearArray">{{year}}</li>
+                            </ul>
+                        </div>
+                        <div class="pk__body-block">
+                            <ul class="pk__item-warp" ref="month" :style="{transform: vo.domStyle.month}">
+                                <li class="pk__item" v-for="month in vo.monthArray">{{month}}</li>
+                            </ul>
+                        </div>
+                        <div class="pk__body-block">
+                            <ul class="pk__item-warp" ref="day" :style="{transform: vo.domStyle.day}">
+                                <li class="pk__item" v-for="day in vo.dayArray">{{day}}</li>
+                            </ul>
+                        </div>
+                        <div class="pk__body-block">
+                            <ul class="pk__item-warp" ref="hours" :style="{transform: vo.domStyle.hours}">
+                                <li class="pk__item" v-for="hours in vo.hoursArray">{{hours}}</li>
+                            </ul>
+                        </div>
+                        <div class="pk__body-block">
+                            <ul class="pk__item-warp" ref="minutes" :style="{transform: vo.domStyle.minutes}">
+                                <li class="pk__item" v-for="minutes in vo.minutesArray">{{minutes}}</li>
+                            </ul>
+                        </div>
+                        <div class="pk__body-block">
+                            <ul class="pk__item-warp" ref="seconds" :style="{transform: vo.domStyle.seconds}">
+                                <li class="pk__item" v-for="seconds in vo.secondsArray">{{seconds}}</li>
                             </ul>
                         </div>
                     </div>
@@ -229,22 +255,44 @@
                     phoneWidth: 375,
                     show: false,
                     tabIndex: 0,
+                    yearArray: [],
+                    monthArray: [],
+                    dayArray: [],
+                    hoursArray: [],
+                    minutesArray: [],
+                    secondsArray: [],
                     domStyle: {
+                        "year": 'translate3d(0px, 3rem, 0px)',
+                        "month": 'translate3d(0px, 3rem, 0px)',
+                        "day": 'translate3d(0px, 3rem, 0px)',
+                        "hours": 'translate3d(0px, 3rem, 0px)',
+                        "minutes": 'translate3d(0px, 3rem, 0px)',
+                        "seconds": 'translate3d(0px, 3rem, 0px)',
                         "body": 'translate3d(0rem, 0, 0px)',
-                    },
-                    data: {}
+                    }
                 }
             }
         },
         props: {
             "value": {
                 type: [Number, String, Object],
-            },
-            "data": [Array, Object],
-            tabLayout: {
-                type: Array,
                 default: function () {
-                    return [2, 2]
+                    new Date()
+                },
+                validator: function (value) {
+                    if (typeof value === "number") {
+                        return true
+                    } else if (typeof value === "object" && value instanceof Date) {
+                        return true
+                    } else if (typeof value === "string") {
+                        var reg = /^[1-9]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])\s+(20|21|22|23|[0-1]\d):[0-5]\d:[0-5]\d$/;
+
+                        if (!reg.test(value)) {
+                            console.error("时间格式不正确,正确格式为: 2014-01-01 12:00:00 ");
+                            return false
+                        }
+                        return true
+                    }
                 }
             }
         },
@@ -256,21 +304,13 @@
             }
         },
         methods: {
-            canRender(count, tabIndex, index){
-                let max = 0, min = 0;
-                for (let i = 0; i <= tabIndex; i++) {
-                    if (i < tabIndex) {
-                        min += this.tabLayout[i]
-                    }
-                    max += this.tabLayout[i]
-                }
-                return min <= index && index < max
-            },
             showPanel()
             {
+                this.setDateTime()
                 this.vo.show = true
                 this.$refs.pk.classList.add("pk--show")
-            },
+            }
+            ,
             hidePanel(e)
             {
                 if (e) {
@@ -284,7 +324,7 @@
                 setTimeout(()=> {
                     this.vo.show = false
                     list.remove("pk--hide")
-                }, 200)
+                }, 500)
             },
             changeTab(index)
             {
@@ -298,68 +338,59 @@
                 if (Math.abs(e.pos.x) - Math.abs(e.pos.y) > 0) {
                     return
                 }
-                let block = this.$refs.body.querySelector(`div[tabindex="${this.vo.tabIndex}"]`)
+                let type = ''
+                let blockWidth = this.vo.phoneWidth / 3
 
-
-                let items = block.querySelectorAll('.pk__body-block')
-
-                let blockWidth = this.vo.phoneWidth / items.length
-
-                let index = Math.floor(e.beginPos.x / blockWidth)
-
-
-                let key = items[index].getAttribute('type')
-
-                this.changeItem(e, key)
-            },
+                if (e.beginPos.x < blockWidth) {
+                    type = this.vo.tabIndex == 0 ? "year" : "hours"
+                } else if (e.beginPos.x < blockWidth * 2) {
+                    type = this.vo.tabIndex == 0 ? "month" : "minutes"
+                } else {
+                    type = this.vo.tabIndex == 0 ? "day" : "seconds"
+                }
+                this.changeItem(e, type)
+            }
+            ,
 
             changeItem(e, type) {
                 if (!type) {
                     return
                 }
                 let index = 0
-                let el = this.$refs[type][0];
+                let el = this.$refs[type];
                 let translateY = this.getTranslateY(el)
                 translateY += ( e.pos.y / 35)
+
+                Math.abs(translateY - 3)
 
                 if (e.end) {
                     translateY = Math.round(translateY)
                     index = Math.abs(translateY - 3)
-
-
                 }
 
                 this.vo.domStyle[type] = `translate3d(0px, ${translateY}rem, 0px)`
-
 
                 if (translateY > 3 && e.end) {
                     this.vo.domStyle[type] = `translate3d(0px,3rem, 0px)`
                     index = 0
                 }
 
-                let min = -(this.vo.data[type].length - 4)
-
+                let min = -(this.vo[type + "Array"].length - 4)
                 if (e.end && min > translateY) {
                     this.vo.domStyle[type] = `translate3d(0px, ${min}rem, 0px)`
-                    index = this.vo.data[type].length - 1
+                    index = this.vo[type + "Array"].length - 1
                 }
-
-                if(e.end){
-                    this.$emit("change",type,this.vo.data[type][index])
+                if (e.end && index >= 0 && index < this.vo[type + "Array"].length) {
+                    this.po[type] = this.vo[type + "Array"][parseInt(index)]
+                    if (type != "day") {
+                        this.getDayArray()
+                    }
                 }
-
             },
 
             getTranslateY(el){
                 let css = el.style['transform'] || el.style['-webkit-transform'] || el.style['-ms-transform'] || el.style["-moz-transform"] || el.style["-o-transform"]
                 return parseFloat(css.replace("translate3d(0px,", '').replace("rem, 0px)", ''))
-            },
-
-            getTranslateX(){
-                let el = this.$refs.body
-                let css = el.style['transform'] || el.style['-webkit-transform'] || el.style['-ms-transform'] || el.style["-moz-transform"] || el.style["-o-transform"]
-                return parseFloat(css.replace("translate3d(", '').replace("rem,0px, 0px)", ''))
-
             },
 
             getDayArray() {//获取天数
@@ -402,6 +433,29 @@
                 }
             },
 
+            initPanelDate() { //初始化数据
+                for (let i = 1970; i <= new Date().getFullYear(); i++) {
+                    this.vo.yearArray.push(i)
+                }
+                for (let i = 1; i <= 12; i++) {
+                    this.vo.monthArray.push(this.padLeft(i))
+                }
+                for (let i = 1; i <= 30; i++) {
+                    this.vo.dayArray.push(this.padLeft(i))
+                }
+
+                for (let i = 0; i <= 23; i++) {
+                    this.vo.hoursArray.push(this.padLeft(i))
+                }
+
+                for (let i = 0; i <= 59; i++) {
+                    this.vo.minutesArray.push(this.padLeft(i))
+                }
+
+                for (let i = 0; i <= 59; i++) {
+                    this.vo.secondsArray.push(this.padLeft(i))
+                }
+            },
             setDateTime(){ //设置时间
 
 
@@ -445,12 +499,6 @@
                 }
                 return value
             },
-
-            initBlockPostion(){
-                for (var type in this.vo.data) {
-                    this.$set(this.vo.domStyle, type, `translate3d(0px,3rem, 0px)`)
-                }
-            },
             submit(){
                 this.$emit("input", this.datetime)
                 this.hidePanel()
@@ -459,21 +507,12 @@
         },
         mounted: function () {
             this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
-            this.$refs.body.style.width = `${this.tabLayout.length * 10}rem`
-            this.initBlockPostion()
-            this.showPanel()
-
-        },
-        watch: {
-            data: {
-                handler: function (val) {
-                    this.vo.data = val
-                    this.initBlockPostion()
-                },
-                deep: true
-            }
+            this.initPanelDate()
+            this.setDateTime()
         }
     }
-
+    window.onerror = function (e) {
+        alert(e)
+    }
 
 </script>

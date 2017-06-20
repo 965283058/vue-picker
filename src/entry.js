@@ -5,6 +5,7 @@ import http from 'vue-http'
 import Alert from 'vt-alert'
 import router from './router'
 import Loading from 'vt-loading'
+import datePicker from 'components/datePicker'
 import picker from 'components/picker'
 
 Vue.use(http, {
@@ -20,6 +21,7 @@ Vue.component('Cell', Cell)
 Vue.component('Alert', Alert)
 Vue.component('Loading', Loading)
 Vue.component('picker', picker)
+Vue.component('datePicker', datePicker)
 
 
 new Vue({

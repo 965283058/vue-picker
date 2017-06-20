@@ -79,5 +79,9 @@ module.exports = {
     },
     server: {
         port: 8080, // server port
+        proxy: {
+            host: 'http://localhost:9999/', // proxy url
+            match: /^\/mysql/ // proxy match regexp
+        }
     }
 }
