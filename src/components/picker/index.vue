@@ -148,10 +148,13 @@
     .pk__item {
         width: 100%;
         height: 1rem;
-        text-align: center;
-        line-height: 1rem;
-        font-size: 0.6rem;
+        line-height: 0.5rem;
+        font-size: 0.4rem;
         color: #000;
+        display: flex;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
     }
 
     .pk__mask {
@@ -176,7 +179,10 @@
 </style>
 <template>
     <div>
-        <input type="text" readonly="readonly" :value="value" @click="showPanel()">
+        <div @click="showPanel()">
+            <slot>
+            </slot>
+        </div>
         <div class="pkWarp" v-show="vo.show" ref="pk" @click="hidePanel($event)" @touchmove.prevent="">
             <div class="pk">
                 <div class="pk__header">
@@ -193,7 +199,9 @@
 
 
                     <div class="pk__body-header" v-for="(count,tabIndex) in tabLayout">
-                        <div v-if="canRender(count,tabIndex,index)" v-for="(val, key, index) in vo.data">{{key}}
+                        <div v-if="canRender(count,tabIndex,index)" v-for="(val, key, index) in vo.data">
+                            <span v-if="header[index]">{{header[index]}}</span>
+                            <span v-else>{{key}}</span>
                         </div>
                     </div>
 
@@ -201,7 +209,9 @@
                         <div class="pk__body-block" v-if="canRender(count,tabIndex,index)"
                              :type="key" v-for="(items, key, index) in vo.data">
                             <ul class="pk__item-warp" :ref="key" :style="{transform: vo.domStyle[key]}">
-                                <li class="pk__item" v-for="item in items">{{item.name}}</li>
+                                <li class="pk__item" v-for="item in items">
+                                    {{item[textField]}}
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -218,12 +228,7 @@
         data: function () {
             return {
                 po: {
-                    year: 0,
-                    month: 0,
-                    day: 0,
-                    hours: 0,
-                    minutes: 0,
-                    seconds: 0,
+                    itemIndexs: {},
                 },
                 vo: {
                     phoneWidth: 375,
@@ -237,6 +242,20 @@
             }
         },
         props: {
+            valueField: {
+                type: String,
+                default: 'id'
+            },
+            textField: {
+                type: String,
+                default: 'text'
+            },
+            header: {
+                type: Array,
+                default: function () {
+                    return []
+                }
+            },
             "value": {
                 type: [Number, String, Object],
             },
@@ -244,19 +263,24 @@
             tabLayout: {
                 type: Array,
                 default: function () {
-                    return [2, 2]
+                    let count = 0 //总条数
+                    let tabCount = 3//每页显示几列
+                    for (let k in this.data) {
+                        count++
+                    }
+                    let arr = []
+                    let pages = Math.ceil(count / tabCount)//总共几页
+                    for (let i = 0; i < pages - 1; i++) {
+                        arr.push(tabCount)
+                    }
+                    arr.push(count % tabCount)//最后一页的列数
+                    return arr
                 }
             }
         },
-        computed: {
-            datetime: function () {
-                let value = `${this.po.year}-${this.po.month}-${this.po.day} ${this.po.hours}:${this.po.minutes}:${this.po.seconds}`
-                this.$emit('input', value)
-                return value
-            }
-        },
+        computed: {},
         methods: {
-            canRender(count, tabIndex, index){
+            canRender(count, tabIndex, index){ //是否可以渲染该列，用来分第几页
                 let max = 0, min = 0;
                 for (let i = 0; i <= tabIndex; i++) {
                     if (i < tabIndex) {
@@ -266,17 +290,15 @@
                 }
                 return min <= index && index < max
             },
-            showPanel()
+            showPanel()//显示面板
             {
                 this.vo.show = true
                 this.$refs.pk.classList.add("pk--show")
             },
-            hidePanel(e)
+            hidePanel(e)//隐藏面板
             {
-                if (e) {
-                    if (e.target.className.indexOf("pkWarp") == -1) {
-                        return
-                    }
+                if (e && e.target.className.indexOf("pkWarp") == -1) {
+                    return
                 }
                 let list = this.$refs.pk.classList
                 list.remove("pk--show")
@@ -286,75 +308,89 @@
                     list.remove("pk--hide")
                 }, 200)
             },
-            changeTab(index)
+            changeTab(index)//改变面板时候的操作
             {
                 let x = index * 10 * -1
                 this.vo.domStyle.body = `translate3d(${x}rem, 0px, 0px)`
                 this.vo.tabIndex = index
-            }
-            ,
-            move(e)
+            },
+            move(e)//手指移动
             {
-                if (Math.abs(e.pos.x) - Math.abs(e.pos.y) > 0) {
+                if (Math.abs(e.pos.x) - Math.abs(e.pos.y) > 0) {//判断是否是X轴滑动
                     return
                 }
-                let block = this.$refs.body.querySelector(`div[tabindex="${this.vo.tabIndex}"]`)
 
+                let items = this.$refs.body.querySelector(`div[tabindex="${this.vo.tabIndex}"]`).querySelectorAll('.pk__body-block')//获取当前面板的可滑动列
 
-                let items = block.querySelectorAll('.pk__body-block')
+                let blockWidth = this.vo.phoneWidth / items.length  //获取每列的宽度
 
-                let blockWidth = this.vo.phoneWidth / items.length
+                let index = Math.floor(e.beginPos.x / blockWidth)//获取当前操作是在第几列
 
-                let index = Math.floor(e.beginPos.x / blockWidth)
-
-
-                let key = items[index].getAttribute('type')
+                let key = items[index].getAttribute('type')//获取当前滑动列的Key
 
                 this.changeItem(e, key)
             },
-
+            /*
+             * 某一项按Y轴滚动的处理
+             * */
             changeItem(e, type) {
-                if (!type) {
+                if (!type || this.vo.data[type].length == 0) {
                     return
                 }
-                let index = 0
-                let el = this.$refs[type][0];
+                let index = 0//当前滑动列选择的选项的索引
+                let el = this.$refs[type][0];//当前滑动块
                 let translateY = this.getTranslateY(el)
                 translateY += ( e.pos.y / 35)
-
-                if (e.end) {
+                if (e.end) { //如果手指离开屏幕 设置当前滑动块的整数的Y轴偏移
                     translateY = Math.round(translateY)
                     index = Math.abs(translateY - 3)
-
-
                 }
 
-                this.vo.domStyle[type] = `translate3d(0px, ${translateY}rem, 0px)`
-
-
-                if (translateY > 3 && e.end) {
+                this.vo.domStyle[type] = `translate3d(0px, ${translateY}rem, 0px)`//设置当前滑动块的Y轴偏移
+                if (translateY > 3 && e.end) {//如果手指离开屏幕并且滑过了第一个选项
                     this.vo.domStyle[type] = `translate3d(0px,3rem, 0px)`
                     index = 0
                 }
 
-                let min = -(this.vo.data[type].length - 4)
+                let min = -(this.vo.data[type].length - 4)//最后一个选项的Y轴偏移
 
-                if (e.end && min > translateY) {
+                if (e.end && min > translateY) {//如果手指离开屏幕并且滑过了最后一个选项
                     this.vo.domStyle[type] = `translate3d(0px, ${min}rem, 0px)`
                     index = this.vo.data[type].length - 1
                 }
-
-                if(e.end){
-                    this.$emit("change",type,this.vo.data[type][index])
+                if (e.end && this.po.itemIndexs[type] != index) {//如果手指离开屏幕并且选中项发生了改变
+                    this.po.itemIndexs[type] = index
+                    this.$emit("change", type, this.vo.data[type][index], index)
+                    this.afterOptionToTop(type)
                 }
-
             },
 
+            /*
+             * 当前选择项改变后，当前列后面的所用列全部滚动到第一个选项
+             * */
+            afterOptionToTop(type){
+                let change = false
+                for (let key in this.vo.data) {
+                    if (change) {
+                        this.vo.domStyle[key] = `translate3d(0px,3rem, 0px)`
+                    }
+                    if (key == type) {
+                        change = true
+                    }
+                }
+            },
+
+            /*
+             * 获取当前元素的Y轴偏移量（兼容处理）
+             * */
             getTranslateY(el){
                 let css = el.style['transform'] || el.style['-webkit-transform'] || el.style['-ms-transform'] || el.style["-moz-transform"] || el.style["-o-transform"]
                 return parseFloat(css.replace("translate3d(0px,", '').replace("rem, 0px)", ''))
             },
 
+            /*
+             * 获取当前元素的X轴偏移量（兼容处理）
+             * */
             getTranslateX(){
                 let el = this.$refs.body
                 let css = el.style['transform'] || el.style['-webkit-transform'] || el.style['-ms-transform'] || el.style["-moz-transform"] || el.style["-o-transform"]
@@ -362,71 +398,11 @@
 
             },
 
-            getDayArray() {//获取天数
-                let dayLength = 0;
-                switch (parseInt(this.po.month, 10)) {
-                    case 1:
-                    case 3:
-                    case 5:
-                    case 7:
-                    case 8:
-                    case 10:
-                    case 12:
-                        dayLength = 31
-                        break
-                    case 2:
-                        if (this.po.year % 100 == 0 && this.po.year % 400 == 0) {
-                            dayLength = 29
-                        } else if (this.po.year % 4 == 0) {
-                            dayLength = 29
-                        } else {
-                            dayLength = 28
-                        }
-                        break
-                    default:
-                        dayLength = 30
-                        break
-                }
-                let tempArr = []
-                for (let i = 1; i <= dayLength; i++) {
-                    tempArr.push(this.padLeft(i))
-                }
-                this.vo.dayArray = tempArr;
 
-
-                let translateY = this.getTranslateY(this.$refs.day)
-                let min = -(tempArr.length - 4)
-                if (min > translateY) {
-                    this.vo.domStyle.day = `translate3d(0px, ${min}rem, 0px)`
-                    this.po.day = this.vo.dayArray[this.vo.dayArray.length - 1]
-                }
-            },
-
-            setDateTime(){ //设置时间
-
-
-                let date = null
-                if (typeof this.value == 'number') {
-                    date = new Date(this.value)
-                } else if (typeof this.value == 'string') {
-                    date = new Date(Date.parse(this.value.trim().replace(/-/g, "/")))
-                } else if (this.value instanceof Date) {
-                    date = this.value
-                } else {
-                    return console.error("Init DateTime error")
-                }
-
-                this.po.year = date.getFullYear()
-                this.po.month = this.padLeft(date.getMonth() + 1)
-                this.getDayArray()
-                this.po.day = this.padLeft(date.getDate())
-                this.po.hours = this.padLeft(date.getHours())
-                this.po.minutes = this.padLeft(date.getMinutes())
-                this.po.seconds = this.padLeft(date.getSeconds())
-                this.syncTranslateY()
-            },
-
-            syncTranslateY(){  //滚动到指定的数据
+            /*
+             * 滚动到指定的数据
+             * */
+            syncTranslateY(){
                 for (let key in this.po) {
                     for (let i = 0; i < this.vo[key + "Array"].length; i++) {
                         if (parseInt(this.vo[key + "Array"][i]) == parseInt(this.po[key])) {
@@ -436,6 +412,7 @@
                     }
                 }
             },
+
             padLeft(value, length = 2, char = '0'){//大爷的三星S5在babel转码后的padStart的运行中报错
                 value = value + '';
                 if (value.length < length) {
@@ -446,23 +423,31 @@
                 return value
             },
 
-            initBlockPostion(){
+            initBlockPostion(){//初始化面板数据
                 for (var type in this.vo.data) {
-                    this.$set(this.vo.domStyle, type, `translate3d(0px,3rem, 0px)`)
+                    if (!this.vo.domStyle[type]) {
+                        this.$set(this.vo.domStyle, type, `translate3d(0px,3rem, 0px)`)
+                        this.$set(this.po.itemIndexs, type, 0)
+                    }
                 }
             },
-            submit(){
-                this.$emit("input", this.datetime)
+            submit(){//点击确定按钮
+                let map = {}, value = null
+                for (let k in this.vo.data) {
+                    map[k] = this.vo.data[k][this.po.itemIndexs[k]]
+                    if (map[k]) {//防止无数据
+                        value = map[k][this.valueField]
+                    }
+                }
+                this.$emit("input", value, map)
                 this.hidePanel()
             }
-
         },
         mounted: function () {
             this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
             this.$refs.body.style.width = `${this.tabLayout.length * 10}rem`
             this.initBlockPostion()
             this.showPanel()
-
         },
         watch: {
             data: {
@@ -474,6 +459,4 @@
             }
         }
     }
-
-
 </script>

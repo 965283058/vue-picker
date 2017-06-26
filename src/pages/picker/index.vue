@@ -13,7 +13,9 @@
         </cell>
         <cell>
             <label slot="icon">地区：</label>
-            <picker slot="content" :data="vo.area" @change="change"></picker>
+            <picker slot="content" v-model="po.area" :header="vo.headArr" :data="vo.area" textField="name" @change="change">
+                <input type="text">
+            </picker>
         </cell>
     </cells>
 </template>
@@ -27,39 +29,130 @@
                     area: ''
                 },
                 vo: {
+                    headArr:["省份","城市","地区","乡镇","村庄"],
                     area: {
                         'provice': [],
                         'city': [],
                         'county': [],
+                        'town': [],
+                        'village': []
                     }
                 }
             }
         },
         methods: {
             change(key, data){
-                if(key=='provice'){
-                    this.getData('city').then(()=> {
-                        this.getData('county', this.vo.area['city'][0]['id']).then(()=> {
-                            this.getData('county', this.vo.area['city'][0]['id'])
-                        })
-                    })
+                switch (key) {
+                    case "provice":
+                        this.getCity(data.id)
+                        break;
+                    case "city":
+                        this.getCounty(data.id)
+                        break;
+                    case "county":
+                        this.getTown(data.id)
+                        break;
+                    case "town":
+                        this.getVillage(data.id)
+                        break;
                 }
                 this.po.area = data
             },
-            getData(type, id){
-                return this.$http.get('/mysql/' + type, {params: {id: id}}).then(res=> {
-                    this.vo.area[type] = res.data
+            getVillage(id){
+                this.getData('village', id)
+            },
+            getTown(id){
+                this.getData('town', id).then(()=> {
+                   if(this.vo.area['town'].length){
+                       this.getData('village', this.vo.area['town'][0]['id'])
+                   }else{
+                       this.vo.area['village']=[]
+                   }
                 })
-            }
+            },
+            getCounty(id){
+                this.getData('county', id).then(()=> {
+                    if (this.vo.area['county'].length) {
+                        return this.getData('town', this.vo.area['county'][0]['id'])
+                    } else {
+                        this.vo.area.town = []
+                    }
+                }).then(()=> {
+                    if (this.vo.area['town'].length) {
+                        this.getData('village', this.vo.area['town'][0]['id'])
+                    } else {
+                        this.vo.area.village = []
+                    }
+                })
+            },
+            getCity(id){
+                this.getData('city', id).then(()=> {
+                    if(this.vo.area['city'].length){
+                        return this.getData('county', this.vo.area['city'][0]['id'])
+                    }else{
+                        this.vo.area.county = []
+                    }
+                }).then(()=> {
+                    if(this.vo.area['county'].length){
+                        return this.getData('town', this.vo.area['county'][0]['id'])
+                    }else{
+                        this.vo.area.town = []
+                    }
+                }).then((data)=> {
+                    if (this.vo.area['town'].length) {
+                        this.getData('village', this.vo.area['town'][0]['id'])
+                    }else{
+                        this.vo.area['village']=[]
+                    }
+                })
+            },
+            getAllData(){
+                this.getData('provice').then(()=> {
+                    if (this.vo.area['provice'].length > 0) {
+                        return this.getData('city', this.vo.area['provice'][0]['id'])
+                    } else {
+                        this.vo.area.city = []
+                        this.vo.area.county = []
+                        this.vo.area.town = []
+                        this.vo.area.village = []
+                    }
+                }).then(()=> {
+                    if (this.vo.area['city'].length > 0) {
+                        return this.getData('county', this.vo.area['city'][0]['id'])
+                    } else {
+                        this.vo.area.county = []
+                        this.vo.area.town = []
+                        this.vo.area.village = []
+                    }
+                }).then(()=> {
+                    if (this.vo.area['county'].length > 0) {
+                        return this.getData('town', this.vo.area['county'][0]['id'])
+                    } else {
+                        this.vo.area.town = []
+                        this.vo.area.village = []
+                    }
+                }).then(()=> {
+                    if (this.vo.area['town'].length > 0) {
+                        this.getData('village', this.vo.area['town'][0]['id'])
+                    } else {
+                        this.vo.area.village = []
+                    }
+                })
+
+            },
+            getData(type, id){
+                return new Promise((resolve, reject)=> {
+                    this.$http.get('/mysql/' + type, {params: {id: id}}).then(res=> {
+                        this.vo.area[type] = res.data
+                        resolve(res.data)
+                    }).catch(err=> {
+                        reject(err)
+                    })
+                })
+            },
         },
         mounted: function () {
-            this.getData('provice').then(()=> {
-                this.getData('city', this.vo.area['provice'][0]['id']).then(()=> {
-                    this.getData('county', this.vo.area['city'][0]['id'])
-                })
-            })
-
-
+            this.getAllData()
         }
     }
 </script>
