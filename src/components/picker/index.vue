@@ -210,7 +210,7 @@
                              :type="key" v-for="(items, key, index) in vo.data">
                             <ul class="pk__item-warp" :ref="key" :style="{transform: vo.domStyle[key]}">
                                 <li class="pk__item" v-for="item in items">
-                                    {{item[textField]}}
+                                    {{typeof item=='object'?item[textField]:item}}
                                 </li>
                             </ul>
                         </div>
@@ -242,25 +242,26 @@
             }
         },
         props: {
-            valueField: {
+            valueField: {  //每一项的value字段
                 type: String,
                 default: 'id'
             },
-            textField: {
+            textField: { //每一项的文本字段
                 type: String,
                 default: 'text'
             },
-            header: {
+            header: {//标题的数组
                 type: Array,
                 default: function () {
                     return []
                 }
             },
-            "value": {
-                type: [Number, String, Object],
+            changeEventAll: {//改变某一列的选择项后 是否触发后续列的选择项改变事件
+                type: Boolean,
+                default: true
             },
-            "data": [Array, Object],
-            tabLayout: {
+            data: [Array, Object],//数据
+            tabLayout: {//页面的布局每一页有几列
                 type: Array,
                 default: function () {
                     let count = 0 //总条数
@@ -276,11 +277,20 @@
                     arr.push(count % tabCount)//最后一页的列数
                     return arr
                 }
-            }
+            },
+            selectIndexs: {//每一列选中的项，可以是索引或者是选中的数据
+                type: Array,
+                default: function () {
+                    return []
+                }
+            },
         },
         computed: {},
         methods: {
-            canRender(count, tabIndex, index){ //是否可以渲染该列，用来分第几页
+            /*
+             * 是否可以渲染该列，用来分第几页
+             * */
+            canRender(count, tabIndex, index){
                 let max = 0, min = 0;
                 for (let i = 0; i <= tabIndex; i++) {
                     if (i < tabIndex) {
@@ -290,12 +300,19 @@
                 }
                 return min <= index && index < max
             },
-            showPanel()//显示面板
+
+            /*
+             * 显示面板
+             * */
+            showPanel()
             {
                 this.vo.show = true
                 this.$refs.pk.classList.add("pk--show")
             },
-            hidePanel(e)//隐藏面板
+            /*
+             * 隐藏面板
+             * */
+            hidePanel(e)
             {
                 if (e && e.target.className.indexOf("pkWarp") == -1) {
                     return
@@ -308,13 +325,19 @@
                     list.remove("pk--hide")
                 }, 200)
             },
-            changeTab(index)//改变面板时候的操作
+            /*
+             * 改变面板时候的操作
+             * */
+            changeTab(index)
             {
                 let x = index * 10 * -1
                 this.vo.domStyle.body = `translate3d(${x}rem, 0px, 0px)`
                 this.vo.tabIndex = index
             },
-            move(e)//手指移动
+            /*
+             * 手指移动
+             * */
+            move(e)
             {
                 if (Math.abs(e.pos.x) - Math.abs(e.pos.y) > 0) {//判断是否是X轴滑动
                     return
@@ -373,6 +396,9 @@
                 for (let key in this.vo.data) {
                     if (change) {
                         this.vo.domStyle[key] = `translate3d(0px,3rem, 0px)`
+                        if (this.changeEventAll) {
+                            this.$emit("change", key, this.vo.data[key][0] || '')
+                        }
                     }
                     if (key == type) {
                         change = true
@@ -400,17 +426,36 @@
 
 
             /*
-             * 滚动到指定的数据
+             * 选中指定的数据
              * */
-            syncTranslateY(){
-                for (let key in this.po) {
-                    for (let i = 0; i < this.vo[key + "Array"].length; i++) {
-                        if (parseInt(this.vo[key + "Array"][i]) == parseInt(this.po[key])) {
-                            this.vo.domStyle[key] = `translate3d(0px, ${(3 - i)}rem, 0px)`
-                            break
+            selectItem(indexs){
+                this.$nextTick(()=> {
+                    let isNumber = indexs.every(item=>typeof item == "number")
+                    let i = 0;
+                    if (isNumber) {
+                        for (let key in this.vo.data) {
+                            if (indexs[i] !== undefined && indexs[i] < this.vo.data[key].length) {
+                                this.vo.domStyle[key] = `translate3d(0px, ${(3 - indexs[i])}rem, 0px)`
+                                this.$set(this.po.itemIndexs, key, indexs[i])
+                            }
+                            i++
+                        }
+                    } else {
+                        let j = 0;
+                        for (let key in this.vo.data) {
+                            j = 0;
+                            for (let item of this.vo.data[key]) {
+                                if (JSON.stringify(item) == JSON.stringify(indexs[i])) {
+                                    this.vo.domStyle[key] = `translate3d(0px, ${(3 - j)}rem, 0px)`
+                                    this.$set(this.po.itemIndexs, key, j)
+                                    break
+                                }
+                                j++
+                            }
+                            i++
                         }
                     }
-                }
+                })
             },
 
             padLeft(value, length = 2, char = '0'){//大爷的三星S5在babel转码后的padStart的运行中报错
@@ -423,7 +468,10 @@
                 return value
             },
 
-            initBlockPostion(){//初始化面板数据
+            /*
+             * 初始化面板数据
+             * */
+            initBlockPostion(){
                 for (var type in this.vo.data) {
                     if (!this.vo.domStyle[type]) {
                         this.$set(this.vo.domStyle, type, `translate3d(0px,3rem, 0px)`)
@@ -431,6 +479,10 @@
                     }
                 }
             },
+
+            /*
+             * 点击确定按钮
+             * */
             submit(){//点击确定按钮
                 let map = {}, value = null
                 for (let k in this.vo.data) {
@@ -439,7 +491,7 @@
                         value = map[k][this.valueField]
                     }
                 }
-                this.$emit("input", value, map)
+                this.$emit("done", value, map)
                 this.hidePanel()
             }
         },
@@ -447,6 +499,10 @@
             this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
             this.$refs.body.style.width = `${this.tabLayout.length * 10}rem`
             this.initBlockPostion()
+
+            if (this.selectIndexs && this.selectIndexs.length) {
+                this.selectItem(this.selectIndexs)
+            }
             this.showPanel()
         },
         watch: {
@@ -454,6 +510,17 @@
                 handler: function (val) {
                     this.vo.data = val
                     this.initBlockPostion()
+                },
+                deep: true
+            },
+            selectIndexs: {
+                handler: function (val, old) {
+                    let isChange = !old.every((item, index)=> {
+                        return item == val[index]
+                    })
+                    if (val.length != old.length || isChange) {
+                        this.selectItem(val)
+                    }
                 },
                 deep: true
             }

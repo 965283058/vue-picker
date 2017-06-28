@@ -13,7 +13,7 @@
         </cell>
         <cell>
             <label slot="icon">地区：</label>
-            <picker slot="content" v-model="po.area" :header="vo.headArr" :data="vo.area" textField="name" @change="change">
+            <picker slot="content"  :header="vo.headArr" :selectIndexs="vo.selectIndexs" :changeEventAll="false" :data="vo.area" textField="name" @change="change" @done="selectDone">
                 <input type="text">
             </picker>
         </cell>
@@ -26,7 +26,7 @@
             return {
                 po: {
                     date: "2016-02-28 12:23:32",
-                    area: ''
+                    area: {}
                 },
                 vo: {
                     headArr:["省份","城市","地区","乡镇","村庄"],
@@ -36,11 +36,15 @@
                         'county': [],
                         'town': [],
                         'village': []
-                    }
+                    },
+                    selectIndexs:[]
                 }
             }
         },
         methods: {
+            selectDone(value,items){
+                this.po.area=items
+            },
             change(key, data){
                 switch (key) {
                     case "provice":
@@ -56,7 +60,8 @@
                         this.getVillage(data.id)
                         break;
                 }
-                this.po.area = data
+                this.$set(this.po.area,key,data)
+
             },
             getVillage(id){
                 this.getData('village', id)
@@ -133,9 +138,12 @@
                     }
                 }).then(()=> {
                     if (this.vo.area['town'].length > 0) {
-                        this.getData('village', this.vo.area['town'][0]['id'])
+                        this.getData('village', this.vo.area['town'][0]['id']).then(()=>{
+                            this.vo.selectIndexs=[2,1,4,5,6]
+                        })
                     } else {
                         this.vo.area.village = []
+                        this.vo.selectIndexs=[2,1,4,5,6]
                     }
                 })
 
