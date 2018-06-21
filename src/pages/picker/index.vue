@@ -1,15 +1,12 @@
 <template lang="html">
     <cells>
         <cell>
-            <label slot="content">{{po.date}}</label>
-        </cell>
-        <cell>
             <label slot="icon">时间：</label>
-            <datePicker slot="content" v-model="po.date"></datePicker>
+            <datetimePicker slot="content" v-model="po.date" ></datetimePicker>
         </cell>
-
         <cell>
-            <label slot="content">{{po.area}}</label>
+            <label slot="icon">时间日期：</label>
+            <datetimePicker slot="content" v-model="po.datetime" type="hh:mm:ss"></datetimePicker>
         </cell>
         <cell>
             <label slot="icon">地区：</label>
@@ -26,7 +23,9 @@
             return {
                 po: {
                     date: "2016-02-28 12:23:32",
-                    area: {}
+                    area: {
+                    },
+                    datetime:'12:12:11'
                 },
                 vo: {
                     headArr:["省份","城市","地区","乡镇","村庄"],
@@ -160,7 +159,10 @@
             },
         },
         mounted: function () {
-            this.getAllData()
+            setTimeout(()=>{
+                this.po.date="2011-01-22 11:33:22"
+                this.po.datetime="23:23:32"
+            },5000)
         }
     }
 </script>

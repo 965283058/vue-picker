@@ -200,7 +200,7 @@
                     <div class="pk__body" ref="body">
                         <div class="pk__mask pk__mask--top"></div>
                         <div class="pk__mask pk__mask--bottom"></div>
-                        <div class="pk__body-block">
+                        <div class="pk__body-block" v-show="vo.show.year">
                             <ul class="pk__item-warp" ref="year" :style="{transform: vo.domStyle.year}">
                                 <li class="pk__item" v-for="year in vo.yearArray">{{year}}</li>
                             </ul>
@@ -269,6 +269,14 @@
                         "minutes": 'translate3d(0px, 3rem, 0px)',
                         "seconds": 'translate3d(0px, 3rem, 0px)',
                         "body": 'translate3d(0rem, 0, 0px)',
+                    },
+                    show: {
+                        "year": false,
+                        "month": false,
+                        "day": false,
+                        "hours": false,
+                        "minutes": false,
+                        "seconds": false
                     }
                 }
             }
@@ -286,13 +294,19 @@
                         return true
                     } else if (typeof value === "string") {
                         var reg = /^[1-9]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])\s+(20|21|22|23|[0-1]\d):[0-5]\d:[0-5]\d$/;
-
                         if (!reg.test(value)) {
                             console.error("时间格式不正确,正确格式为: 2014-01-01 12:00:00 ");
                             return false
                         }
                         return true
                     }
+                }
+            },
+            type: {
+                type: String,
+                default: 'yyyy-MM-dd hh:mm:ss',
+                validator: function (value) {
+                    return true
                 }
             }
         },
@@ -331,8 +345,7 @@
                 let x = index * 10 * -1
                 this.vo.domStyle.body = `translate3d(${x}rem, 0px, 0px)`
                 this.vo.tabIndex = index
-            }
-            ,
+            },
             move(e)
             {
                 if (Math.abs(e.pos.x) - Math.abs(e.pos.y) > 0) {
@@ -457,8 +470,6 @@
                 }
             },
             setDateTime(){ //设置时间
-
-
                 let date = null
                 if (typeof this.value == 'number') {
                     date = new Date(this.value)
@@ -503,7 +514,6 @@
                 this.$emit("input", this.datetime)
                 this.hidePanel()
             }
-
         },
         mounted: function () {
             this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
@@ -511,8 +521,6 @@
             this.setDateTime()
         }
     }
-    window.onerror = function (e) {
-        alert(e)
-    }
+
 
 </script>

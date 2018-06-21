@@ -1,14 +1,20 @@
 <style scoped>
     .pkWarp {
         width: 100%;
-        height: calc(100% + 9rem);
+        height: 100%;
         background: black;
         position: fixed;
         top: 0;
         left: 0;
-        opacity: 0;
         overflow: hidden;
         z-index: 10;
+        opacity: 0;
+        transition-property: opacity;
+        transition-duration: 0.5s;
+    }
+
+    .pkWarp--active {
+        opacity: 0.5;
     }
 
     .pk {
@@ -17,37 +23,37 @@
         position: absolute;
         bottom: 0;
         z-index: 100;
+        opacity: 1;
 
+        background: #ffffff;
     }
 
-    .pk--show {
-        animation: moveTop 0.5s ease-in;
+    .pkWarp .pk {
+        animation: moveBottom 0.5s ease-out;
         animation-fill-mode: forwards;
     }
 
-    .pk--hide {
-        animation: moveBottom 0.5s ease-out;
+    .pkWarp.pkWarp--active .pk {
+        animation: moveTop 0.5s ease-in;
         animation-fill-mode: forwards;
     }
 
     @keyframes moveTop {
         from {
-            transform: translate(0, 0);
-            opacity: 0;
+            transform: translate(0, 9rem);
         }
         to {
-            transform: translate(0, -9rem);
-            opacity: 0.5;
+            transform: translate(0, 0rem);
         }
     }
 
     @keyframes moveBottom {
         from {
-            transform: translate(0, -8rem);
+            transform: translate(0, 0rem);
             opacity: 0.5;
         }
         to {
-            transform: translate(0, 0);
+            transform: translate(0, 9rem);
             opacity: 0;
         }
     }
@@ -179,15 +185,15 @@
 </style>
 <template>
     <div>
-        <div @click="showPanel()">
-            <slot>
-            </slot>
+        <div @click.stop="showPanel()">
+            <slot></slot>
         </div>
-        <div class="pkWarp" v-show="vo.show" ref="pk" @click="hidePanel($event)" @touchmove.prevent="">
+        <div class="pkWarp" v-show="vo.show" ref="pk" @click="hidePanel($event)"
+             @touchmove.prevent="">
             <div class="pk">
                 <div class="pk__header">
                     <button @click="hidePanel()">取消</button>
-                    <div class="pk__button--tabs">
+                    <div class="pk__button--tabs" v-if="tabLayout.length>1">
                         <span v-for="(count,tabIndex) in tabLayout" :class="{'active':vo.tabIndex==tabIndex}"
                               @touchstart="changeTab(tabIndex)">第{{tabIndex+1}}页</span>
                     </div>
@@ -196,7 +202,6 @@
                 <div v-move="move" class="pk__body-warp" ref="body" :style="{transform: vo.domStyle.body}">
                     <div class="pk__mask pk__mask--top"></div>
                     <div class="pk__mask pk__mask--bottom"></div>
-
 
                     <div class="pk__body-header" v-for="(count,tabIndex) in tabLayout">
                         <div v-if="canRender(count,tabIndex,index)" v-for="(val, key, index) in vo.data">
@@ -256,6 +261,10 @@
                     return []
                 }
             },
+            changeAfterToTop: {//改变某一列的选择项后 是否选中第一项
+                type: Boolean,
+                default: true
+            },
             changeEventAll: {//改变某一列的选择项后 是否触发后续列的选择项改变事件
                 type: Boolean,
                 default: true
@@ -271,10 +280,12 @@
                     }
                     let arr = []
                     let pages = Math.ceil(count / tabCount)//总共几页
-                    for (let i = 0; i < pages - 1; i++) {
+                    for (let i = 0; i < pages; i++) {
                         arr.push(tabCount)
                     }
-                    arr.push(count % tabCount)//最后一页的列数
+                    if (count % tabCount > 0) {
+                        arr.splice(pages.length - 1, 1, count % tabCount)
+                    }
                     return arr
                 }
             },
@@ -298,7 +309,8 @@
                     }
                     max += this.tabLayout[i]
                 }
-                return min <= index && index < max
+                let result = min <= index && index < max
+                return result
             },
 
             /*
@@ -307,7 +319,9 @@
             showPanel()
             {
                 this.vo.show = true
-                this.$refs.pk.classList.add("pk--show")
+                this.$nextTick(()=> {
+                    this.$refs.pk.classList.add("pkWarp--active")
+                })
             },
             /*
              * 隐藏面板
@@ -318,11 +332,9 @@
                     return
                 }
                 let list = this.$refs.pk.classList
-                list.remove("pk--show")
-                list.add("pk--hide")
+                list.remove("pkWarp--active")
                 setTimeout(()=> {
                     this.vo.show = false
-                    list.remove("pk--hide")
                 }, 200)
             },
             /*
@@ -384,7 +396,9 @@
                 if (e.end && this.po.itemIndexs[type] != index) {//如果手指离开屏幕并且选中项发生了改变
                     this.po.itemIndexs[type] = index
                     this.$emit("change", type, this.vo.data[type][index], index)
-                    this.afterOptionToTop(type)
+                    if (this.changeAfterToTop) {
+                        this.afterOptionToTop(type)
+                    }
                 }
             },
 
@@ -430,32 +444,36 @@
              * */
             selectItem(indexs){
                 this.$nextTick(()=> {
-                    let isNumber = indexs.every(item=>typeof item == "number")
-                    let i = 0;
-                    if (isNumber) {
-                        for (let key in this.vo.data) {
-                            if (indexs[i] !== undefined && indexs[i] < this.vo.data[key].length) {
-                                this.vo.domStyle[key] = `translate3d(0px, ${(3 - indexs[i])}rem, 0px)`
-                                this.$set(this.po.itemIndexs, key, indexs[i])
-                            }
-                            i++
-                        }
-                    } else {
-                        let j = 0;
-                        for (let key in this.vo.data) {
-                            j = 0;
-                            for (let item of this.vo.data[key]) {
-                                if (JSON.stringify(item) == JSON.stringify(indexs[i])) {
-                                    this.vo.domStyle[key] = `translate3d(0px, ${(3 - j)}rem, 0px)`
-                                    this.$set(this.po.itemIndexs, key, j)
-                                    break
+                            let isNumber = indexs.every(item =>typeof item == "number")
+                            let i = 0;
+                            if (isNumber) {
+                                for (let key in this.vo.data) {
+                                    if (indexs[i] !== undefined && indexs[i] < this.vo.data[key].length) {
+                                        this.scrollToItem(key, indexs[i])
+                                    }
+                                    i++
                                 }
-                                j++
+                            } else {
+                                let j = 0;
+                                for (let key in this.vo.data) {
+                                    j = 0;
+                                    for (let item of this.vo.data[key]) {
+                                        if (JSON.stringify(item) == JSON.stringify(indexs[i])) {
+                                            this.scrollToItem(key, j)
+                                            break
+                                        }
+                                        j++
+                                    }
+                                    i++
+                                }
                             }
-                            i++
                         }
-                    }
-                })
+                )
+            },
+
+            scrollToItem(key, value){
+                this.vo.domStyle[key] = `translate3d(0px, ${(3 - value)}rem, 0px)`
+                this.$set(this.po.itemIndexs, key, value)
             },
 
             padLeft(value, length = 2, char = '0'){//大爷的三星S5在babel转码后的padStart的运行中报错
@@ -489,21 +507,29 @@
                     map[k] = this.vo.data[k][this.po.itemIndexs[k]]
                     if (map[k]) {//防止无数据
                         value = map[k][this.valueField]
+                        if (!value && value !== 0) {
+                            value = map[k]
+                        }
                     }
                 }
                 this.$emit("done", value, map)
                 this.hidePanel()
+            },
+
+            init(){
+                this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
+                this.vo.data = this.data
+                this.$refs.body.style.width = `${this.tabLayout.length * 10}rem`
+                this.initBlockPostion()
+                if (this.selectIndexs && this.selectIndexs.length) {
+                    this.selectItem(this.selectIndexs)
+                }
             }
+
         },
         mounted: function () {
-            this.vo.phoneWidth = window.document.documentElement.clientWidth || window.body.clientWidth
-            this.$refs.body.style.width = `${this.tabLayout.length * 10}rem`
-            this.initBlockPostion()
-
-            if (this.selectIndexs && this.selectIndexs.length) {
-                this.selectItem(this.selectIndexs)
-            }
-            this.showPanel()
+            //alert(window.document.documentElement.clientHeight|| window.body.clientHeight)
+            this.init()
         },
         watch: {
             data: {
@@ -515,7 +541,7 @@
             },
             selectIndexs: {
                 handler: function (val, old) {
-                    let isChange = !old.every((item, index)=> {
+                    let isChange = !old.every((item, index) => {
                         return item == val[index]
                     })
                     if (val.length != old.length || isChange) {
